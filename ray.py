@@ -11,14 +11,20 @@ class Ray(object):
         self.origin = origin
         self.direction = direction
 
+    def point_at_parameter(self, t):
+        return self.origin + self.direction * t
+
     # TODO: Move this somewhere else...
     @staticmethod
     def normalize(vec):
         return vec/LA.norm(vec)
 
+
 def color(ray):
-    if hit_sphere(np.array([0, 0, -1]), 0.5, ray):
-        return np.array([1, 0, 0])
+    t = hit_sphere(np.array([0,0,-1]), 0.5, ray)
+    if t > 0.0:
+        N = Ray.normalize(ray.point_at_parameter(t) - np.array([0,0,-1]))
+        return 0.5 * (N + 1)
     unit_direction = Ray.normalize(ray.direction)
     t = 0.5*unit_direction[1] + 1.0
     return (1.0 - t)*np.ones(3) + t*np.array([0.5, 0.7, 1.0])
@@ -30,8 +36,10 @@ def hit_sphere(center, radius, ray):
     b = 2.0 * np.dot(oc, ray.direction)
     c = np.dot(oc, oc) - radius**2
     discriminant = b**2 - 4*a*c
-    return discriminant > 0
-
+    if discriminant < 0:
+        return -1.0
+    else:
+        return (-b - (discriminant**(0.5))) / (2.0 * a)
 
 def main():
     """Main function"""
