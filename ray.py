@@ -71,6 +71,10 @@ class Ray(object):
     def normalize(vec):
         return vec/LA.norm(vec)
 
+    @staticmethod
+    def squared_dist(vec):
+        return LA.norm(vec)**2
+
 class Camera(object):
     def __init__(self, lower_left_corner, horizontal, vertical, origin):
         self.lower_left_corner = lower_left_corner
@@ -81,16 +85,21 @@ class Camera(object):
     def generate_ray(self, u, v):
         return Ray(self.origin, self.lower_left_corner + u*self.horizontal + v*self.vertical - self.origin)
 
-
 def color(ray, world):
-    hit_status, rec = hit_list(world, ray, 0.0, float("inf"))
+    hit_status, rec = hit_list(world, ray, 0.001, float("inf"))
     if hit_status:
-        return 0.5*np.array([rec.normal[0] + 1, rec.normal[1] + 1, rec.normal[2] + 1])
+        target = rec.p + rec.normal + random_in_unit_sphere() # matte
+        return 0.5*color(Ray(rec.p, target-rec.p), world)
     else:
         unit_dir = Ray.normalize(ray.direction)
         t = 0.5*(unit_dir[1] + 1)
         return (1.0-t)*np.ones(3) + t*np.array([0.5, 0.7, 1.0])
 
+def random_in_unit_sphere():
+    rand_pt = 2.0 * np.array([random(), random(), random()]) - np.ones(3)
+    while(Ray.squared_dist(rand_pt) >= 1):
+        rand_pt = 2.0 * np.array([random(), random(), random()]) - np.ones(3)
+    return rand_pt
 
 def main():
     """Main function"""
@@ -116,6 +125,7 @@ def main():
                 #p = r.point_at_parameter(2.0)
                 col += color(r, world)
             col /= float(ns)
+            col = col**0.5
             ir = int(255.99 * col[0])
             ig = int(255.99 * col[1])
             ib = int(255.99 * col[2])
