@@ -4,6 +4,57 @@ import sys
 import numpy as np
 from numpy import linalg as LA
 
+class HitRecord(object):
+    def __init__(self, t, p, normal):
+        self.t = t
+        self.p = p
+        self.normal = normal
+
+
+class Hitable(object):
+    def hit(self, ray, t_min, t_max, rec):
+        raise NotImplementedError()
+
+
+class Sphere(Hitable):
+
+    def __init__(self, center, radius):
+        self.center = center
+        self.radius = radius
+
+    def hit(self, ray, t_min, t_max):
+        """Determine if a ray hits a sphere with center and radius"""
+        oc = ray.origin - self.center
+        a = np.dot(ray.direction, ray.direction)
+        b = 2.0 * np.dot(oc, ray.direction)
+        c = np.dot(oc, oc) - self.radius**2
+        discriminant = b**2 - 4*a*c
+        if discriminant > 0:
+            temp = (-b - (b*b - a*c)**0.5)/a
+            if t_min < temp < t_max:
+                p = ray.point_at_parameter(temp)
+                normal = (p - self.center) / self.radius
+                return (True, HitRecord(temp, p, normal))
+            else:
+                temp = (-b + (b*b - a*c)**0.5)/a
+                if t_min < temp < t_max:
+                    p = ray.point_at_parameter(temp)
+                    normal = (p - self.center) / self.radius
+                    return (True, HitRecord(temp, p, normal))
+        return (False, None)
+
+
+def hit_list(hittable_list, ray, t_min, t_max):
+    closest_rec = None
+    hit_anything = False
+    closest_so_far = t_max
+    for hittable in hittable_list:
+        hit_status, rec = hittable.hit(ray, t_min, closest_so_far)
+        if hit_status:
+            hit_anything = True
+            closest_so_far = rec.t
+            closest_rec = rec
+    return hit_anything, closest_rec
 
 class Ray(object):
     """A ray class"""
@@ -20,26 +71,15 @@ class Ray(object):
         return vec/LA.norm(vec)
 
 
-def color(ray):
-    t = hit_sphere(np.array([0,0,-1]), 0.5, ray)
-    if t > 0.0:
-        N = Ray.normalize(ray.point_at_parameter(t) - np.array([0,0,-1]))
-        return 0.5 * (N + 1)
-    unit_direction = Ray.normalize(ray.direction)
-    t = 0.5*unit_direction[1] + 1.0
-    return (1.0 - t)*np.ones(3) + t*np.array([0.5, 0.7, 1.0])
-
-def hit_sphere(center, radius, ray):
-    """Determine if a ray hits a sphere with center and radius"""
-    oc = ray.origin - center
-    a = np.dot(ray.direction, ray.direction)
-    b = 2.0 * np.dot(oc, ray.direction)
-    c = np.dot(oc, oc) - radius**2
-    discriminant = b**2 - 4*a*c
-    if discriminant < 0:
-        return -1.0
+def color(ray, world):
+    hit_status, rec = hit_list(world, ray, 0.0, float("inf"))
+    if hit_status:
+        return 0.5*np.array([rec.normal[0] + 1, rec.normal[1] + 1, rec.normal[2] + 1])
     else:
-        return (-b - (discriminant**(0.5))) / (2.0 * a)
+        unit_dir = Ray.normalize(ray.direction)
+        t = 0.5*(unit_dir[1] + 1)
+        return (1.0-t)*np.ones(3) + t*np.array([0.5, 0.7, 1.0])
+
 
 def main():
     """Main function"""
@@ -50,12 +90,15 @@ def main():
     horizontal = np.array([4.0, 0.0, 0.0])
     vertical = np.array([0.0, 2.0, 0.0])
     origin = np.zeros(3)
+    world = []
+    world.append(Sphere(np.array([0, 0, -1]), 0.5))
+    world.append(Sphere(np.array([0, -100.5, -1]), 100))
     for j in reversed(xrange(ny)):
         for i in range(nx):
             u = float(i) / float(nx)
             v = float(j) / float(ny)
             r = Ray(origin, lower_left_corner + u * horizontal + v*vertical)
-            col = color(r)
+            col = color(r, world)
             ir = int(255.99 * col[0])
             ig = int(255.99 * col[1])
             ib = int(255.99 * col[2])
