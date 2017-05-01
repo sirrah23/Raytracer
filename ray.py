@@ -3,6 +3,7 @@
 import sys
 import numpy as np
 from numpy import linalg as LA
+from random import random
 
 class HitRecord(object):
     def __init__(self, t, p, normal):
@@ -70,6 +71,16 @@ class Ray(object):
     def normalize(vec):
         return vec/LA.norm(vec)
 
+class Camera(object):
+    def __init__(self, lower_left_corner, horizontal, vertical, origin):
+        self.lower_left_corner = lower_left_corner
+        self.horizontal = horizontal
+        self.vertical = vertical
+        self.origin = origin
+
+    def generate_ray(self, u, v):
+        return Ray(self.origin, self.lower_left_corner + u*self.horizontal + v*self.vertical - self.origin)
+
 
 def color(ray, world):
     hit_status, rec = hit_list(world, ray, 0.0, float("inf"))
@@ -85,20 +96,26 @@ def main():
     """Main function"""
     nx = 200
     ny = 100
+    ns = 100
     sys.stdout.write("P3\n" + str(nx) + " " + str(ny) + "\n255\n")
+    world = []
+    world.append(Sphere(np.array([0, 0, -1]), 0.5))
+    world.append(Sphere(np.array([0, -100.5, -1]), 100))
     lower_left_corner = np.array([-2.0, -1.0, -1.0])
     horizontal = np.array([4.0, 0.0, 0.0])
     vertical = np.array([0.0, 2.0, 0.0])
     origin = np.zeros(3)
-    world = []
-    world.append(Sphere(np.array([0, 0, -1]), 0.5))
-    world.append(Sphere(np.array([0, -100.5, -1]), 100))
+    cam = Camera(lower_left_corner, horizontal, vertical, origin)
     for j in reversed(xrange(ny)):
         for i in range(nx):
-            u = float(i) / float(nx)
-            v = float(j) / float(ny)
-            r = Ray(origin, lower_left_corner + u * horizontal + v*vertical)
-            col = color(r, world)
+            col = np.zeros(3)
+            for _ in range(ns):
+                u = float(i + random()) / float(nx)
+                v = float(j + random()) / float(ny)
+                r = cam.generate_ray(u, v)
+                #p = r.point_at_parameter(2.0)
+                col += color(r, world)
+            col /= float(ns)
             ir = int(255.99 * col[0])
             ig = int(255.99 * col[1])
             ib = int(255.99 * col[2])
