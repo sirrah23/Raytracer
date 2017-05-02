@@ -2,6 +2,7 @@
 
 import sys
 import numpy as np
+import math
 from numpy import linalg as LA
 from random import random
 
@@ -78,11 +79,17 @@ class Ray(object):
         return LA.norm(vec)**2
 
 class Camera(object):
-    def __init__(self, lower_left_corner, horizontal, vertical, origin):
-        self.lower_left_corner = lower_left_corner
-        self.horizontal = horizontal
-        self.vertical = vertical
-        self.origin = origin
+    def __init__(self, vfov, aspect, lookfrom, lookat, vup):
+        theta = vfov*math.pi/180
+        half_height = math.tan(theta/2)
+        half_width = aspect * half_height
+        self.origin = lookfrom
+        w = Ray.normalize(lookfrom - lookat)
+        u = Ray.normalize(np.cross(vup, w))
+        v = np.cross(w, u)
+        self.lower_left_corner = self.origin - half_width*u - half_height*v - w
+        self.horizontal = 2*half_width*u
+        self.vertical = 2*half_height*v
 
     def generate_ray(self, u, v):
         return Ray(self.origin, self.lower_left_corner + u*self.horizontal + v*self.vertical - self.origin)
@@ -195,11 +202,7 @@ def main():
     world.append(Sphere(np.array([0, -100.5, -1]), 100, Lambertian(np.array([0.8, 0.8, 0.0]))))
     world.append(Sphere(np.array([1, 0, -1]), 0.5, Metal(np.array([0.8, 0.6, 0.2]), 0.3)))
     world.append(Sphere(np.array([-1, 0, -1]), 0.5, Dielectric(1.5)))
-    lower_left_corner = np.array([-2.0, -1.0, -1.0])
-    horizontal = np.array([4.0, 0.0, 0.0])
-    vertical = np.array([0.0, 2.0, 0.0])
-    origin = np.zeros(3)
-    cam = Camera(lower_left_corner, horizontal, vertical, origin)
+    cam = Camera(90, float(nx)/float(ny), np.array([-2,2,1]),np.array([0,0,-1]),np.array([0,1,0]))
     for j in reversed(xrange(ny)):
         for i in range(nx):
             col = np.zeros(3)
